@@ -1,0 +1,192 @@
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+import tkinter as tk
+from tkinter.ttk import*
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+# Setting up the level
+level = 1
+
+difficulty = 1+(level/10)
+target_size = 50/difficulty
+
+# Setting up the target
+
+target = [2000, 200]
+target_coords_x = [target[0]-target_size, target[0]+target_size, target[0]+target_size, target[0]-target_size, target[0]-target_size]
+target_coords_y = [target[1]+target_size, target[1]+target_size, target[1]-target_size, target[1]-target_size, target[1]+target_size]
+
+
+
+# Use equations of motion to plot the path of a projectile
+# SUVAT, F = MA, Drag equation,
+
+pi = 3.141592654
+
+# Initial Conditions
+
+
+initial_acceleration = 0            # m
+initial_x_position = 0              # m
+initial_y_position = 0              # m
+x = 0
+y = 0
+location = [0,0]
+root = tk.Tk()
+
+vel_entry = tk.Entry(root)
+angle_entry = tk.Entry(root)
+rotation_entry = tk.Entry(root)
+vel_entry.grid(row=1, column=1)
+angle_entry.grid(row=2, column=1)
+rotation_entry.grid(row=3, column=1)
+
+
+def inputs():
+    # Put whole script in here
+    initial_velocity = int(vel_entry.get())
+    initial_angle = int(angle_entry.get())
+    rotation = int(rotation_entry.get())
+
+    # Constants
+
+    drag_coeff = 0.5
+    radius = 0.1  # m
+    grav_coeff = 9.81  # m/s^2
+    time_step = 0.1  # s*e-1
+    density = 1.2  # mg/m^3
+    projectile_density = 1000  # kg/m^3
+    mass = projectile_density * (4 / 3) * pi * radius ** 3
+
+    drag_area = math.pi * radius ** 2
+    velocity = initial_velocity
+    angle = initial_angle * pi / 180
+
+    location = [initial_x_position, initial_y_position]
+
+    u1 = velocity * math.cos(angle)
+    v1 = velocity * math.sin(angle)
+
+    # Step in time function
+
+    def time_step_calcs(u1=u1, v1=v1, location=location):
+
+        sx1 = location[0]
+        sy1 = location[1]
+
+        x_drag = 0.5 * density * drag_area * drag_coeff * u1 ** 2
+        y_drag = 0.5 * density * drag_area * drag_coeff * v1 ** 2
+        gravity_force = mass * grav_coeff
+
+        x_lift = (16 / 3) * (pi ** 2) * (radius ** 3) * rotation * 1.2 * v1
+        y_lift = (16 / 3) * (pi ** 2) * (radius ** 3) * rotation * 1.2 * u1
+
+        if v1 > 0:
+            y_drag = -y_drag
+
+        x_acceleration = (-x_drag + x_lift) / mass
+        y_acceleration = (y_drag - gravity_force + y_lift) / mass
+
+        # Suvat Equations
+
+        v2 = v1 + y_acceleration * time_step
+        sy2 = sy1 + (v1 + v2) * 0.5
+
+        u2 = u1 + x_acceleration * time_step
+        sx2 = sx1 + (u1 + u2) * 0.5
+
+        # location = [sx2, sy2]
+
+        return v2, sy2, u2, sx2
+
+    # Log the 3 parameters at each time interval upto 10s
+
+    output = [0, 0, 0, 0]
+
+    velocity_log = [initial_velocity]
+    location_log = [[initial_x_position, initial_y_position]]
+    angle_log = [initial_angle * pi / 180]
+    xs_log = [output[3]]
+    ys_log = [output[1]]
+
+    for i in range(1, 101, 1):
+        output = time_step_calcs(u1, v1, location)
+        angle = math.atan(output[0] / output[2])
+        velocity = ((output[2] ** 2) + (output[0] ** 2)) ** 0.5
+        location = [output[3], output[1]]
+
+        velocity_log.append(velocity)
+        location_log.append(location)
+        angle_log.append(angle)
+        xs_log.append(output[3])
+        ys_log.append(output[1])
+
+        u1 = output[2]
+        v1 = output[0]
+
+        if i == 100:
+            print(location)
+
+    # Plotting Path
+
+    # x axis values
+    x = xs_log
+    # corresponding y axis values
+    y = ys_log
+
+    # plotting the points
+    plt.plot(x, y)
+    plt.plot(target_coords_x,target_coords_y)
+    plt.gca().set_aspect('equal')
+    plt.grid(True)
+    # naming the x axis
+    plt.xlabel('x (m)')
+    # naming the y axis
+    plt.ylabel('y (m)')
+
+    # giving a title to my graph
+    plt.title('Trajectory')
+
+    # function to show the plot
+
+    plt.show()
+
+    # Determining if Final Point is within Target
+    if x[100] > target_coords_x[0] and x[100] < target_coords_x[1] and y[100] > target_coords_y[2] and y[100] < target_coords_y[0]:
+        level_complete = 1
+        print('Within Target')
+    else:
+        level_complete = 0
+        print('Not Within Target')
+
+    return x, y, level_complete
+
+
+def reset_trajectory():
+    plt.close()
+
+
+vel_label = Label(root, text='Velocity: ').grid(row=1, column=0)
+angle_label = Label(root, text='Angle: ').grid(row=2, column=0)
+rotation_label = Label(root, text='Rotation: ').grid(row=3, column=0)
+calculate_trajectory = tk.Button(root, text='Plot', command=inputs).grid(row=4, column=1)
+reset_trajectory = tk.Button(root, text='Reset', command=reset_trajectory).grid(row=4, column=0)
+target_coord = tk.Label(root, text='Target: '+str(target)).grid(row=1, column=2)
+
+
+figure = Figure(figsize=(5, 4), dpi=100)
+plot = figure.add_subplot(1, 1, 1)
+plot.plot(target_coords_x,target_coords_y)
+plot.plot(0, 0)
+plot.plot(x, y)
+plot.axis("equal")
+canvas = FigureCanvasTkAgg(figure, root)
+canvas.get_tk_widget().grid(row=0, column=2)
+
+root.mainloop()
+
+
+
+
